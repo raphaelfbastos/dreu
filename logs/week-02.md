@@ -13,6 +13,7 @@ Zoom on 6/17 with Prof. Tassiulas and Panos Promponas
 ## Results
 
 Decided which research thrust to pursue
+Scheduled follow-up meeting with Panos
 
 ## Notes
 
