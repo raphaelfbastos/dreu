@@ -22,4 +22,4 @@ Better understanding of possible applications of quanutm annealing
 
 ## Notes
 
-
+Will add more later, need to backtrack notes
