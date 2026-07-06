@@ -18,4 +18,4 @@ Scheduled follow-up meeting with Panos
 
 ## Notes
 
-
+Will add more later, need to backtrack notes
