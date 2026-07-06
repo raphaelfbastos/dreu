@@ -17,4 +17,4 @@ Have a decent idea of the desired application
 
 ## Notes
 
-
+Will add more later, need to backtrack notes
