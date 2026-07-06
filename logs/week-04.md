@@ -5,6 +5,7 @@
 ## Goals
 
 Further study possible applications for quantum annealing
+
 Synthesize notes for meeting with Panos
 
 ## Approach and Implementation
