@@ -16,4 +16,4 @@ Began to understand the project goals
 
 ## Notes
 
-
+Will add more later, need to backtrack notes
