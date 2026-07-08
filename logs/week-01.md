@@ -4,16 +4,19 @@
 
 ## Goals
 
-Become familiar with the project
+- Become familiar with the project
+- Get in contact with rest of team
 
 ## Approach and Implementation
 
-Reading literature provided by team
+Panos emailed me a list of literature to work through to get familiar with the research thrusts being focused on. I read through each and took notes.
 
 ## Results
 
-Began to understand the project goals
+- Began to understand the project goals
+- Learned the basics of Quadratic Unconstrained Binary Optimization (QUBO) problems
+
+Very interested in the ideas and concepts I have seen so far.
 
 ## Notes
 
-Will add more later, need to backtrack notes
