@@ -16,8 +16,8 @@ Prof. Tassiulas put in a request for a visitor ID with Yale, I filled out part o
 ## Results
 
 - Awaiting visitor ID
+- Plenty of literature to discuss with Panos
 - Better understanding of possible applications of quanutm annealing
 
 ## Notes
 
-Will add more later, need to backtrack notes
