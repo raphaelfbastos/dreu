@@ -12,9 +12,11 @@
 
 This week, I read more literature and took more notes, as well as marked the meeting with Panos for Wednesday of next week. Not much to write about otherwise.
 
+Quantum computing is really cool, just learning about QUBOs and quantum annealing (QA) has been super interesting already.
+
 ## Results
 
-- Have a decent idea of types of possible applications
+- Have a decent idea of types of possible power grid applications of QA
 
 ## Notes
 
