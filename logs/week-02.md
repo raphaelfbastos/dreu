@@ -15,7 +15,6 @@ I had a zoom meeting on 06-17 with Prof. Tassiulas and Panos Promponas to discus
 ## Results
 
 - Decided to pursue power grid applications of quantum annealing
-
 - Figured out roughly when would be the next meeting with Panos
 
 ## Notes
