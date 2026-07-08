@@ -9,15 +9,14 @@
 
 ## Approach and Implementation
 
-Filled out form for Prof. Tassiulas
+No meeting this week, solely searching for literature. Found eight possibly-useful papers.
 
-Made list of literature and began taking notes
+Prof. Tassiulas put in a request for a visitor ID with Yale, I filled out part of the form for him with my information.
 
 ## Results
 
-Awaiting visitor ID and response from Prof. Tassiulas
-
-Better understanding of possible applications of quanutm annealing
+- Awaiting visitor ID
+- Better understanding of possible applications of quanutm annealing
 
 ## Notes
 
