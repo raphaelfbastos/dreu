@@ -4,18 +4,17 @@
 
 ## Goals
 
-Further study possible applications for quantum annealing
-
-Synthesize notes for meeting with Panos
+- Further study possible applications for quantum annealing
+- Synthesize notes for meeting with Panos
+- Schedule meeting with Panos
 
 ## Approach and Implementation
 
-Read more literature and took notes
+This week, I read more literature and took more notes, as well as marked the meeting with Panos for Wednesday of next week. Not much to write about otherwise.
 
 ## Results
 
-Have a decent idea of types of possible applications
+- Have a decent idea of types of possible applications
 
 ## Notes
 
-Will add more later, need to backtrack notes
