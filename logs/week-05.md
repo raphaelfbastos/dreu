@@ -5,18 +5,24 @@
 ## Goals
 
 Read literature
+
 Meet with Panos
+
 Register for DWave course
 
 ## Approach and Implementation
 
 Summarized notes for meeting with Panos
-Meet with Panos on 07-08 from 9:30-10am
 
+Registered for DWave course during the week of 07-20
+
+Meet with Panos on 07-08 from 9:30-10am
 
 ## Results
 
-Ready for next meeting
+Continuing reading
+
+Thinking about possible applications
 
 ## Notes
 
