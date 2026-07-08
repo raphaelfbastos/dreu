@@ -14,7 +14,7 @@ Read more literature and took notes
 
 ## Results
 
-Have a decent idea of the desired application
+Have a decent idea of types of possible applications
 
 ## Notes
 
