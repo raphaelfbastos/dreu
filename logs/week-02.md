@@ -4,18 +4,19 @@
 
 ## Goals
 
-Meet with the team to discuss prior week's literature
+- Meet Panos and discuss assigned literature
+- Decide on which research thrust to pursue
+- Outline next steps
 
 ## Approach and Implementation
 
-Zoom on 6/17 with Prof. Tassiulas and Panos Promponas
+I had a zoom meeting on 06-17 with Prof. Tassiulas and Panos Promponas to discuss the reading and which research thrust I wanted to delve deeper into (power grid vs. distributed computing). I chose power grid, as it seemed more interesting and application-based and was what I originally talked about with Prof. Tassiulas.
 
 ## Results
 
-Decided which research thrust to pursue
+- Decided to pursue power grid applications of quantum annealing
 
-Scheduled follow-up meeting with Panos
+- Figured out roughly when would be the next meeting with Panos
 
 ## Notes
 
-Will add more later, need to backtrack notes
