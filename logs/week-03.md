@@ -4,9 +4,8 @@
 
 ## Goals
 
-Register as visiting undergraduate at Yale
-
-Find new literature for discussion with Panos
+- Gain access to DWave systems being used for the research
+- Find new literature for discussion with Panos
 
 ## Approach and Implementation
 
