@@ -13,7 +13,7 @@ Prof. Tassiulas sent out a link for a DWave course that the team will be partici
 
 I met with Panos on 07-08 from 9:30-10am. The meeting went very well, he thinks I am doing a good job with compiling and understanding literature. We will continue to look for papers and meet again sometime next week. I am going to look into some classical papers on power grid problems, hopefully I will find something that has not been deeply explored using quantum algorithms.
 
-I got the email about these logs just this last Friday, so these logs were created this week. This one is current and did not need to be backtracked.
+I got the email about these logs just this last Friday, so these logs were created this week. This one is current and did not need to be backtracked. I set the first log as the first official week of the research contract.
 
 ## Results
 
