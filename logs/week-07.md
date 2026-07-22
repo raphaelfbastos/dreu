@@ -8,7 +8,7 @@
 
 ## Approach and Implementation
 
-The DWave Quantum Programming Core course began this week. It has been very interesting and informative so far, I am excited to work with the technology. Being able to submit problems to real quantum computers is beyond awesome.
+The DWave Quantum Programming Core course began this week. It has been very interesting and informative so far, DWave's materials are exceptional. I am excited to work with the technology, being able to submit problems to real quantum computers is beyond awesome.
 
 ## Results
 
