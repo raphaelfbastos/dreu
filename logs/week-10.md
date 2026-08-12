@@ -1,14 +1,17 @@
 # Week 10
 
-**Dates:** MM-DD to MM-DD
+**Dates:** 08-10 to 08-14
 
 ## Goals
 
-
+- Continue work on SCUC implementation
+- Find more literature regarding SCUC
+- Meet with Panos to discuss findings
+- Work on final poster
 
 ## Approach and Implementation
 
-
+The SCUC implementation is essentially finished. We do not have D-Wave solver access at the moment, so I cannot sample for a solution, however the model construction is working as far as I can tell. Building the model for a 50-generator, 20-bus, 30-line network takes about 3.5s, with larger networks currently being tested. Panos and I will meet on Friday to discuss findings. Since it is technically the last week of the program, I will start my poster soon.
 
 ## Results
 
