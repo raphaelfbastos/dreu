@@ -16,6 +16,7 @@ The SCUC implementation is essentially finished. We do not have D-Wave solver ac
 ## Results
 
 - Implemented SCUC with D-Wave framework
+- Began outlining final report
 
 ## Notes
 
