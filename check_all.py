@@ -7,9 +7,9 @@ all weekly logs due so far, prints a status summary, and (optionally) emails
 students whose logs are missing or malformed.
 
 Usage:
-    python check_all.py                   # check and print report only
-    python check_all.py --send-email      # check and email students with issues
-    python check_all.py --week 4          # override current week (default: auto)
+    python scripts/check_all.py                   # check and print report only
+    python scripts/check_all.py --send-email      # check and email students with issues
+    python scripts/check_all.py --week 4          # override current week (default: auto)
 
 Supports two log types (auto-detected from the URL in students.csv):
     GitHub repo   — https://github.com/username/repo
@@ -32,12 +32,12 @@ from pathlib import Path
 
 import requests
 
-from check_log import validate_log
+from check_log import validate_log, validate_readme_names
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-CONFIG_FILE   = Path("config.ini")
-STUDENTS_FILE = Path("students.csv")
+CONFIG_FILE   = Path(__file__).parent / "config.ini"
+STUDENTS_FILE = Path(__file__).parent.parent / "students.csv"
 NUM_WEEKS     = 10
 BRANCH_ORDER  = ["main", "master"]   # tried in order when fetching from GitHub
 
@@ -104,6 +104,10 @@ def is_gdoc_url(url: str) -> bool:
     return "docs.google.com/document" in url
 
 
+def is_github_url(url: str) -> bool:
+    return "github.com/" in url
+
+
 def _gdoc_export_url(doc_url: str, fmt: str) -> str:
     m = GDOC_ID_RE.search(doc_url)
     if not m:
@@ -142,6 +146,10 @@ def gdoc_html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     lines: list[str] = []
 
+    # Section names that should be treated as ## headings even if not styled
+    SECTION_NAMES = {"Goals", "Approach and Implementation", "Results", "Notes"}
+    WEEK_P_RE     = re.compile(r"^Week\s+\d+$", re.IGNORECASE)
+
     for el in soup.find_all(["h1", "h2", "p", "li"]):
         text = el.get_text(" ", strip=True)
         if not text:
@@ -153,9 +161,18 @@ def gdoc_html_to_text(html: str) -> str:
         elif el.name == "li":
             lines.append(f"- {text}")
         else:  # p
+            # Promote bare "Week N" paragraphs to # headings (student forgot Heading 1 style)
+            if WEEK_P_RE.match(text):
+                lines.append(f"# {text}")
+            # Promote bare section-name paragraphs to ## headings (student forgot Heading 2 style)
+            elif text in SECTION_NAMES:
+                lines.append(f"## {text}")
             # Normalise any variant of the Dates line to **Dates:** MM-DD to MM-DD
-            if re.search(r"Dates:\s*\d{2}-\d{2}", text, re.IGNORECASE):
+            # Accepts both dash (06-08) and slash (06/08) separators
+            elif re.search(r"Dates:\s*\d{2}[-/]\d{2}", text, re.IGNORECASE):
                 date_part = re.sub(r"^.*Dates:\s*", "", text, flags=re.IGNORECASE).strip()
+                # Normalise slashes to dashes: 06/08 → 06-08
+                date_part = re.sub(r"(\d{2})/(\d{2})", r"\1-\2", date_part)
                 lines.append(f"**Dates:** {date_part}")
             else:
                 lines.append(text)
@@ -234,6 +251,22 @@ def check_student_gdoc(name: str, doc_url: str, weeks_due: int) -> list[dict]:
     ]
 
     week_sections = split_gdoc_by_week(content)
+
+    # If the doc loaded but has no "# Week N" headings at all, it's the wrong
+    # format entirely — mark all due weeks INVALID, not MISSING.
+    if not week_sections:
+        error = (
+            "Document is accessible but not in the DREU research log format — "
+            "no '# Week N' headings found. Please use the DREU template at "
+            "https://github.com/cra-wp/dreu"
+        )
+        return [
+            {"week": w,
+             "status": STATUS_INVALID if w <= weeks_due else STATUS_FUTURE,
+             "errors": [error] if w <= weeks_due else []}
+            for w in range(1, NUM_WEEKS + 1)
+        ]
+
     results: list[dict] = []
 
     for week in range(1, NUM_WEEKS + 1):
@@ -250,16 +283,82 @@ def check_student_gdoc(name: str, doc_url: str, weeks_due: int) -> list[dict]:
                 f"Week {week} section not found in Google Doc "
                 f"(expected a '# Week {week}' heading)"
             )
-            results.append({"week": week, "status": STATUS_MISSING, "errors": week_errors})
+            results.append({"week": week, "status": STATUS_MISSING, "errors": week_errors, "warnings": []})
         else:
-            passed, errors = validate_log(week_sections[week], filename=f"Week {week}")
+            passed, errors, warnings = validate_log(week_sections[week], filename=f"Week {week}")
             week_errors.extend(errors)
             results.append({
-                "week":   week,
-                "status": STATUS_OK if not week_errors else STATUS_INVALID,
-                "errors": week_errors,
+                "week":     week,
+                "status":   STATUS_OK if not week_errors else STATUS_INVALID,
+                "errors":   week_errors,
+                "warnings": warnings,
             })
 
+    return results
+
+
+# ── Generic URL fetching ─────────────────────────────────────────────────────
+
+def check_student_generic_url(name: str, url: str, weeks_due: int) -> list[dict]:
+    """
+    Handle research logs hosted on arbitrary public websites (not GitHub or Google Docs).
+    Fetches the page and attempts to parse it as HTML using the same converter as Google Docs.
+    If the page is unreachable, all due weeks are MISSING.
+    If the page is reachable but not in the expected format, all due weeks are INVALID.
+    """
+    html = _fetch_url(url)
+
+    if html is None:
+        error = (
+            f"Could not fetch URL — confirm the page is publicly accessible: {url}"
+        )
+        return [
+            {"week": w,
+             "status": STATUS_MISSING if w <= weeks_due else STATUS_FUTURE,
+             "errors": [error] if w <= weeks_due else []}
+            for w in range(1, NUM_WEEKS + 1)
+        ]
+
+    # Try to parse it like a Google Doc HTML export
+    try:
+        content = gdoc_html_to_text(html)
+    except Exception:
+        content = ""
+
+    week_sections = split_gdoc_by_week(content)
+
+    if not week_sections:
+        # Page loaded but has no recognisable "# Week N" structure
+        error = (
+            "Page is accessible but not in the expected DREU log format "
+            "(no '# Week N' / 'Week N' headings found). "
+            "Please use a GitHub repo or Google Doc in the DREU format."
+        )
+        return [
+            {"week": w,
+             "status": STATUS_INVALID if w <= weeks_due else STATUS_FUTURE,
+             "errors": [error] if w <= weeks_due else []}
+            for w in range(1, NUM_WEEKS + 1)
+        ]
+
+    # Page has week sections — validate each one
+    results: list[dict] = []
+    for week in range(1, NUM_WEEKS + 1):
+        if week > weeks_due:
+            results.append({"week": week, "status": STATUS_FUTURE, "errors": []})
+            continue
+        if week not in week_sections:
+            results.append({"week": week, "status": STATUS_MISSING, "errors": [
+                f"Week {week} section not found on page"
+            ]})
+        else:
+            passed, errors, warnings = validate_log(week_sections[week], filename=f"Week {week}")
+            results.append({
+                "week":     week,
+                "status":   STATUS_OK if passed else STATUS_INVALID,
+                "errors":   errors,
+                "warnings": warnings,
+            })
     return results
 
 
@@ -276,27 +375,42 @@ def check_student(name: str, repo_url: str, weeks_due: int, token: str = "") -> 
     Check all logs for one student up to weeks_due.
 
     Returns a list of result dicts, one per week:
-        { week, status, errors }
+        { week, status, errors, warnings }
+
+    Also checks README.md for unfilled Student/Mentor name placeholders and
+    surfaces any warnings on week 1.
     """
+    # Check README.md for placeholder names (warn on week 1)
+    readme_warnings: list[str] = []
+    readme_content = fetch_file(repo_url, "README.md", token=token)
+    if readme_content is not None:
+        readme_warnings = validate_readme_names(readme_content)
+
     results = []
     for week in range(1, NUM_WEEKS + 1):
         if week > weeks_due:
-            results.append({"week": week, "status": STATUS_FUTURE, "errors": []})
+            results.append({"week": week, "status": STATUS_FUTURE, "errors": [], "warnings": []})
             continue
 
         filepath = f"logs/week-{week:02d}.md"
         content  = fetch_file(repo_url, filepath, token=token)
 
         if content is None:
-            results.append({"week": week, "status": STATUS_MISSING, "errors": [
-                f"logs/week-{week:02d}.md not found in repo"
-            ]})
-        else:
-            passed, errors = validate_log(content, filename=filepath)
             results.append({
-                "week":   week,
-                "status": STATUS_OK if passed else STATUS_INVALID,
-                "errors": errors,
+                "week":     week,
+                "status":   STATUS_MISSING,
+                "errors":   [f"logs/week-{week:02d}.md not found in repo"],
+                "warnings": readme_warnings if week == 1 else [],
+            })
+        else:
+            passed, errors, warnings = validate_log(content, filename=filepath)
+            if week == 1:
+                warnings = readme_warnings + warnings
+            results.append({
+                "week":     week,
+                "status":   STATUS_OK if passed else STATUS_INVALID,
+                "errors":   errors,
+                "warnings": warnings,
             })
 
     return results
@@ -329,19 +443,23 @@ def print_report(students_results: list[dict], weeks_due: int):
 
     print(f"\nLegend: ✓=OK  MIS=missing  INV=invalid format  —=not yet due\n")
 
-    # Detail for any issues
+    # Detail for any errors or warnings
     any_issues = False
     for sr in students_results:
-        issues = [(r["week"], r["errors"]) for r in sr["results"] if r["errors"]]
-        if issues:
+        has_errors   = any(r.get("errors")   for r in sr["results"])
+        has_warnings = any(r.get("warnings") for r in sr["results"])
+        if has_errors or has_warnings:
             if not any_issues:
                 print("Issues:")
                 any_issues = True
             print(f"\n  {sr['name']} ({sr['email']})")
-            for week, errors in issues:
-                print(f"    Week {week}:")
-                for err in errors:
-                    print(f"      • {err}")
+            for r in sr["results"]:
+                errs  = r.get("errors",   [])
+                warns = r.get("warnings", [])
+                if errs or warns:
+                    print(f"    Week {r['week']}:")
+                    for err  in errs:  print(f"      ✗ {err}")
+                    for warn in warns: print(f"      ⚠ {warn}")
 
     if not any_issues:
         print("No issues found — all logs up to date.")
@@ -448,13 +566,20 @@ def main():
         name     = s["name"].strip()
         email    = s["email"].strip()
         doc_url  = s["repo_url"].strip()   # column holds either a GitHub or Google Docs URL
-        doc_type = "Google Doc" if is_gdoc_url(doc_url) else "GitHub"
+        if is_gdoc_url(doc_url):
+            doc_type = "Google Doc"
+        elif is_github_url(doc_url):
+            doc_type = "GitHub"
+        else:
+            doc_type = "Website"
         print(f"  Checking {name} ({doc_type}) ...")
 
         if is_gdoc_url(doc_url):
             results = check_student_gdoc(name, doc_url, weeks_due)
-        else:
+        elif is_github_url(doc_url):
             results = check_student(name, doc_url, weeks_due, token=github_token)
+        else:
+            results = check_student_generic_url(name, doc_url, weeks_due)
 
         students_results.append({
             "name":     name,

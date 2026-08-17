@@ -1,126 +1,165 @@
 #!/usr/bin/env python3
 """
-check_log.py — DREU weekly log format validator
+check_log.py — Validate a single DREU weekly research log file.
 
-Students: run this to check any single week file before pushing.
+Usage (student-facing):
+    python scripts/check_log.py logs/week-01.md
 
-    python check_log.py logs/week-03.md
+Exit codes:
+    0 — log is valid (may still have warnings)
+    1 — log has errors that must be fixed
 
-Exit code 0 = pass, 1 = validation errors found.
+Requires: no third-party packages
 """
 
 import re
 import sys
 from pathlib import Path
 
-# ── Format constants ──────────────────────────────────────────────────────────
+# ── Constants ──────────────────────────────────────────────────────────────────
 
-REQUIRED_SECTIONS = [
-    "Goals",
-    "Approach and Implementation",
-    "Results",
-]
+REQUIRED_SECTIONS = ["Goals", "Approach and Implementation", "Results"]
 
-WEEK_TITLE_RE  = re.compile(r'^#\s+Week\s+\d+\s*$')
+# Matches:  # Week 1  /  # Week 10  (leading # required)
+WEEK_TITLE_RE  = re.compile(r'^#\s+Week\s+\d+\s*$', re.MULTILINE)
+
+# Valid date line:  **Dates:** 06-02 to 06-06
 DATES_LINE_RE  = re.compile(
-    r'^\*\*Dates:\*\*\s+(\d{2}-\d{2})\s+to\s+(\d{2}-\d{2})\s*$'
+    r'^\*\*Dates:\*\*\s+(\d{2}-\d{2})\s+to\s+(\d{2}-\d{2})\s*$',
+    re.MULTILINE,
 )
-PLACEHOLDER_RE = re.compile(r'MM-DD')
+
+# Slash date line (common student mistake):  **Dates:** 06/02 to 06/06
+DATES_SLASH_RE = re.compile(
+    r'^\*\*Dates:\*\*\s+(\d{2}/\d{2})\s+to\s+(\d{2}/\d{2})\s*$',
+    re.MULTILINE,
+)
+
+# Unfilled placeholder in dates
+PLACEHOLDER_RE = re.compile(r'MM-DD|MM/DD')
+
+# README name placeholders
+NAME_PLACEHOLDERS = {"Your Full Name", "Mentor Full Name"}
+README_NAME_RE    = re.compile(
+    r'^\*\*(?P<field>Student|Mentor):\*\*\s+(?P<value>.+)',
+    re.MULTILINE,
+)
 
 
-# ── Core validator ────────────────────────────────────────────────────────────
+# ── Core validation ────────────────────────────────────────────────────────────
 
-def validate_log(content: str, filename: str = "") -> tuple[bool, list[str]]:
+def validate_log(content: str, filename: str = "") -> tuple[bool, list[str], list[str]]:
     """
     Validate the content of a weekly log file.
 
-    Returns:
-        (passed, errors)  — passed is True only when errors is empty.
+    Returns (passed, errors, warnings).
+      - errors  → the log fails; student must fix these
+      - warnings → informational only; log still passes
     """
-    lines  = content.splitlines()
-    errors = []
+    errors   = []
+    warnings = []
 
-    # 1. H1 title: must be "# Week N"
-    h1_lines = [l for l in lines if l.startswith("# ")]
-    if not h1_lines:
-        errors.append("Missing H1 title — expected '# Week N' (e.g., '# Week 3')")
-    elif not WEEK_TITLE_RE.match(h1_lines[0]):
-        errors.append(
-            f"H1 title must be '# Week N' with a number — found: '{h1_lines[0]}'"
-        )
+    # Skip files that still have the unfilled date placeholder
+    if PLACEHOLDER_RE.search(content):
+        return True, [], ["Log contains unfilled date placeholder (MM-DD) — skipping validation."]
 
-    # 2. Dates field: must be filled in and correctly formatted
-    dates_lines = [l for l in lines if l.startswith("**Dates:**")]
-    if not dates_lines:
-        errors.append(
-            "Missing Dates field — expected '**Dates:** YYYY-MM-DD to YYYY-MM-DD'"
+    # 1. Week title
+    if not WEEK_TITLE_RE.search(content):
+        errors.append("Missing week title line (e.g. '# Week 1').")
+
+    # 2. Dates line
+    if DATES_LINE_RE.search(content):
+        pass  # correct format
+    elif DATES_SLASH_RE.search(content):
+        warnings.append(
+            "Dates use slashes (e.g. 06/08) — please use dashes instead (e.g. 06-08)."
         )
     else:
-        dl = dates_lines[0]
-        if PLACEHOLDER_RE.search(dl):
-            errors.append("Dates field still contains placeholder — fill in the actual dates")
-        elif not DATES_LINE_RE.match(dl):
-            errors.append(
-                f"Dates field format invalid — expected '**Dates:** MM-DD to MM-DD', found: '{dl}'"
-            )
+        errors.append(
+            "Missing or invalid Dates line. "
+            "Expected format: **Dates:** MM-DD to MM-DD  (e.g. **Dates:** 06-02 to 06-06)"
+        )
 
-    # 3. Parse H2 sections and their content
-    sections: dict[str, list[str]] = {}
-    current: str | None = None
-    body: list[str] = []
+    # 3. Required sections
+    # Split on ## headings to find section blocks
+    section_pattern = re.compile(r'^##\s+(.+)$', re.MULTILINE)
+    found_sections  = {}
+    for m in section_pattern.finditer(content):
+        found_sections[m.group(1).strip()] = m.start()
 
-    for line in lines:
-        if line.startswith("## "):
-            if current is not None:
-                sections[current] = body
-            current = line[3:].strip()
-            body = []
-        elif current is not None:
-            body.append(line)
-    if current is not None:
-        sections[current] = body
-
-    # 4. Required sections must exist and contain non-empty content
     for section in REQUIRED_SECTIONS:
-        if section not in sections:
+        if section not in found_sections:
             errors.append(f"Missing required section: '## {section}'")
         else:
-            filled = [l for l in sections[section] if l.strip()]
-            if not filled:
-                errors.append(f"Section '## {section}' is empty — add your content")
+            # Check the section has non-blank content after the heading
+            start = found_sections[section]
+            # Find end of section (next ## heading or end of file)
+            next_heading = re.search(r'^##', content[start + 1:], re.MULTILINE)
+            end = start + 1 + next_heading.start() if next_heading else len(content)
+            # Skip the heading line itself
+            body_start = content.index('\n', start) + 1
+            body = content[body_start:end].strip()
+            if not body:
+                errors.append(f"Section '## {section}' is empty — please add content.")
 
-    return (len(errors) == 0), errors
+    passed = len(errors) == 0
+    return passed, errors, warnings
 
 
-# ── File helper (used by both this script and check_all.py) ──────────────────
+def validate_readme_names(content: str) -> list[str]:
+    """
+    Check README.md for unfilled Student/Mentor name placeholders.
+    Returns a list of warning strings (empty if names look real).
+    """
+    warnings = []
+    for m in README_NAME_RE.finditer(content):
+        field = m.group("field")
+        value = m.group("value").strip()
+        if value in NAME_PLACEHOLDERS:
+            warnings.append(
+                f"README still has placeholder {field} name '{value}' — "
+                f"please replace it with the real name."
+            )
+    return warnings
 
-def validate_file(filepath: str | Path) -> tuple[bool, list[str]]:
+
+def validate_file(filepath) -> tuple[bool, list[str], list[str]]:
     """Read a file from disk and validate it."""
     path = Path(filepath)
     if not path.exists():
-        return False, [f"File not found: {filepath}"]
+        return False, [f"File not found: {filepath}"], []
     content = path.read_text(encoding="utf-8")
     return validate_log(content, filename=path.name)
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── CLI ────────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python check_log.py logs/week-NN.md")
+    if len(sys.argv) < 2:
+        print("Usage: python scripts/check_log.py <log_file>")
+        print("Example: python scripts/check_log.py logs/week-01.md")
         sys.exit(1)
 
     filepath = sys.argv[1]
-    passed, errors = validate_file(filepath)
+    passed, errors, warnings = validate_file(filepath)
 
-    if passed:
-        print(f"✓  {filepath} — format OK")
+    if not errors and not warnings:
+        print(f"✓  {filepath} — looks good!")
         sys.exit(0)
-    else:
-        print(f"✗  {filepath} — {len(errors)} issue(s) found:\n")
-        for err in errors:
-            print(f"   • {err}")
+
+    print(f"{'✓' if passed else '✗'}  {filepath}")
+    for err in errors:
+        print(f"   ✗ {err}")
+    for warn in warnings:
+        print(f"   ⚠ {warn}")
+
+    if not passed:
+        print("\nPlease fix the errors above, then re-run this script.")
+        print("Contact the DREU program staff <dreu_staff@cra.org> if you need help.")
         sys.exit(1)
+    else:
+        print("\nLog passes — warnings above are suggestions, not required fixes.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
